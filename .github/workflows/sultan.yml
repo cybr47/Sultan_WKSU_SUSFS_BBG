@@ -86,6 +86,14 @@ jobs:
 
           echo "Adding KernelSU..."
           curl -LSs "https://raw.githubusercontent.com/WildKernels/Wild_KSU/stable/kernel/setup.sh" | bash -s canary
+          
+      - name: Add Baseband Guard
+        run: |
+          echo "Changing to configuration directory: $CONFIG..."
+          cd "$CONFIG"
+
+          echo "Integrating Baseband Guard (BBG)..."
+          curl -LSs "https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh" | bash
 
       - name: Apply SUSFS Patches
         if: ${{ matrix.variant != 'WKSU' }}
@@ -107,7 +115,7 @@ jobs:
           cp ../kernel_patches/sultan/sys.c_fix.patch ./
           patch -p1 < sys.c_fix.patch
 
-      - name: Configure KernelSU
+      - name: Configure KernelSU & BBG
         run: |
           cd "$CONFIG"
           # KernelSU Configuration
@@ -118,6 +126,14 @@ jobs:
           else
             echo "CONFIG_KSU_SUSFS=n" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
           fi
+
+          # Add BBG
+          echo "# Baseband Guard (BBG) Support" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
+          echo "CONFIG_BBG=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
+
+          # Add LSM chain (includes Baseband Guard after SELinux)
+          echo "# LSM Security Modules Chain" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
+          echo 'CONFIG_LSM="lockdown,yama,loadpin,safesetid,integrity,selinux,baseband_guard"' >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
 
       - name: Configure Mountify Support
         run: |
