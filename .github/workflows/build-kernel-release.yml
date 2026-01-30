@@ -61,6 +61,7 @@ jobs:
         Features:
         [+] Wild KSU
         [+] SUSFS v2.0.0
+        [+] Baseband Guard
 
     steps:
       # Checkout the code
