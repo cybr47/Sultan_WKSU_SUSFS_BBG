@@ -219,34 +219,46 @@ jobs:
       - name: Integrate KernelPatch-Next (KPM)
         run: |
           cd "$CONFIG"
-          echo "Downloading KPatch-Next Tools..."
-
-          KP_TAG=$(curl -s https://api.github.com/repos/KernelSU-Next/KPatch-Next/releases/latest | jq -r '.tag_name')
+          echo "Fetching latest tag for KPatch-Next..."
           
-          wget -q "https://github.com/KernelSU-Next/KPatch-Next/releases/download/$KP_TAG/kptools-linux"
-          wget -q "https://github.com/KernelSU-Next/KPatch-Next/releases/download/$KP_TAG/kpimg-android"
-          chmod +x kptools-linux
-
-          echo "Patching Kernel Image with KPM-Next..."
-
-          UNCOMPRESSED_IMAGE="./out/arch/arm64/boot/Image"
-          PATCHED_IMAGE="./out/arch/arm64/boot/Image.patched"
-          LZ4_COMPRESSED="./out/arch/arm64/boot/Image.lz4"
-
-          if [ -f "$UNCOMPRESSED_IMAGE" ]; then
-            ./kptools-linux -p "$UNCOMPRESSED_IMAGE" --kpimg kpimg-android -o "$PATCHED_IMAGE"
-
-            mv "$PATCHED_IMAGE" "$UNCOMPRESSED_IMAGE"
-            
-            echo "Re-compressing to LZ4 for Sultan Kernel..."
-            sudo apt-get install -y lz4
-            lz4 -f -9 "$UNCOMPRESSED_IMAGE" "$LZ4_COMPRESSED"
-
-            echo "KPatch-Next Integration Successful."
-          else
-            echo "::error::Uncompressed Image not found! Patching failed."
+          KP_TAG=$(curl -s https://api.github.com/repos/KernelSU-Next/KPatch-Next/releases | jq -r '.[0].tag_name')
+          
+          if [ "$KP_TAG" == "null" ] || [ -z "$KP_TAG" ]; then
+            echo "::error::Could not find a valid release tag."
             exit 1
           fi
+          echo "Found tag: $KP_TAG"
+          
+          TOOLS_URL="https://github.com/KernelSU-Next/KPatch-Next/releases/download/$KP_TAG/kptools-linux"
+          KIMG_URL="https://github.com/KernelSU-Next/KPatch-Next/releases/download/$KP_TAG/kpatch-android"
+          
+          echo "Downloading assets..."
+          wget -q -O kptools-linux "$TOOLS_URL" || { echo "::error::Download failed: kptools-linux"; exit 1; }
+          wget -q -O kpatch-android "$KIMG_URL" || { echo "::error::Download failed: kpatch-android"; exit 1; }
+          chmod +x kptools-linux
+          
+          IMAGE="./out/arch/arm64/boot/Image"
+          PATCHED="./out/arch/arm64/boot/Image.patched"
+          LZ4_OUT="./out/arch/arm64/boot/Image.lz4"
+          
+          if [ ! -f "$IMAGE" ]; then
+            echo "::error::Kernel Image not found! Build failed earlier."
+            exit 1
+          fi
+          
+          echo "Patching Kernel Image with KPM-Next..."
+          ./kptools-linux patch "$IMAGE" --kpimg kpatch-android -o "$PATCHED" || {
+            echo "::error::kptools patching failed."
+            exit 1
+          }
+          
+          echo "Re-compressing to LZ4..."
+          mv -f "$PATCHED" "$IMAGE"
+          
+          sudo apt-get install -y lz4
+          lz4 -f -9 "$IMAGE" "$LZ4_OUT"
+          
+          echo "KPatch-Next Integration Successful."
 
       - name: Copy Images
         run: |
