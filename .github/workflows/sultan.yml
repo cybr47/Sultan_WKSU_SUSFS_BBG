@@ -247,18 +247,21 @@ jobs:
           fi
           
           echo "Patching Kernel Image with KPM-Next..."
-          ./kptools-linux patch "$IMAGE" --kpimg kpatch-android -o "$PATCHED" || {
+          ./kptools-linux -p -i "$IMAGE" -k kpatch-android -o "$PATCHED" || {
             echo "::error::kptools patching failed."
             exit 1
           }
           
           echo "Re-compressing to LZ4..."
-          mv -f "$PATCHED" "$IMAGE"
-          
-          sudo apt-get install -y lz4
-          lz4 -f -9 "$IMAGE" "$LZ4_OUT"
-          
-          echo "KPatch-Next Integration Successful."
+          if [ -f "$PATCHED" ]; then
+            mv -f "$PATCHED" "$IMAGE"
+            sudo apt-get install -y lz4
+            lz4 -f -9 "$IMAGE" "$LZ4_OUT"
+            echo "KPatch-Next Integration Successful."
+          else
+            echo "::error::Patched image was not created!"
+            exit 1
+          fi
 
       - name: Copy Images
         run: |
