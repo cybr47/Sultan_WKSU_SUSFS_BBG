@@ -191,6 +191,15 @@ jobs:
           echo "CONFIG_IP_SET_HASH_NETIFACE=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
           echo "CONFIG_IP_SET_LIST_SET=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
 
+      - name: Configure KernelPatch-Next Support
+        run: |
+          cd "$CONFIG"
+          echo "Enabling KernelPatch-Next (KPM) requirements..."
+          # KPM kallsyms to locate symbols for patching
+          echo "CONFIG_KALLSYMS=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
+          echo "CONFIG_KALLSYMS_ALL=y" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
+          echo "CONFIG_DEBUG_INFO=n" >> ./arch/arm64/configs/${{ inputs.codename }}_defconfig
+
       - name: Run sed and perl Commands
         run: |
           echo "Changing to configuration directory: $CONFIG..."
@@ -206,6 +215,38 @@ jobs:
 
           make CROSS_COMPILE=$GITHUB_WORKSPACE/gcc-14.2.0-nolibc/aarch64-linux/bin/aarch64-linux- CC=$GITHUB_WORKSPACE/gcc-14.2.0-nolibc/aarch64-linux/bin/aarch64-linux-gcc -j$(nproc --all) ${{ inputs.codename }}_defconfig
           make CROSS_COMPILE=$GITHUB_WORKSPACE/gcc-14.2.0-nolibc/aarch64-linux/bin/aarch64-linux- CC=$GITHUB_WORKSPACE/gcc-14.2.0-nolibc/aarch64-linux/bin/aarch64-linux-gcc -j$(nproc --all)
+
+      - name: Integrate KernelPatch-Next (KPM)
+        run: |
+          cd "$CONFIG"
+          echo "Downloading KPatch-Next Tools..."
+
+          KP_TAG=$(curl -s https://api.github.com/repos/KernelSU-Next/KPatch-Next/releases/latest | jq -r '.tag_name')
+          
+          wget -q "https://github.com/KernelSU-Next/KPatch-Next/releases/download/$KP_TAG/kptools-linux"
+          wget -q "https://github.com/KernelSU-Next/KPatch-Next/releases/download/$KP_TAG/kpimg-android"
+          chmod +x kptools-linux
+
+          echo "Patching Kernel Image with KPM-Next..."
+
+          UNCOMPRESSED_IMAGE="./out/arch/arm64/boot/Image"
+          PATCHED_IMAGE="./out/arch/arm64/boot/Image.patched"
+          LZ4_COMPRESSED="./out/arch/arm64/boot/Image.lz4"
+
+          if [ -f "$UNCOMPRESSED_IMAGE" ]; then
+            ./kptools-linux -p "$UNCOMPRESSED_IMAGE" --kpimg kpimg-android -o "$PATCHED_IMAGE"
+
+            mv "$PATCHED_IMAGE" "$UNCOMPRESSED_IMAGE"
+            
+            echo "Re-compressing to LZ4 for Sultan Kernel..."
+            sudo apt-get install -y lz4
+            lz4 -f -9 "$UNCOMPRESSED_IMAGE" "$LZ4_COMPRESSED"
+
+            echo "KPatch-Next Integration Successful."
+          else
+            echo "::error::Uncompressed Image not found! Patching failed."
+            exit 1
+          fi
 
       - name: Copy Images
         run: |
