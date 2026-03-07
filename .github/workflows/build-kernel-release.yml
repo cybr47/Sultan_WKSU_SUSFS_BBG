@@ -45,9 +45,9 @@ jobs:
       REPO_OWNER: TheWildJames
       REPO_NAME: Sultan_KernelSU_SUSFS
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      RELEASE_NAME: "Sultan Kernels With KernelSU Next & SUSFS v2.0.0"
+      RELEASE_NAME: "Sultan Kernels With WKSU, SUSFS & BBG
       RELEASE_NOTES: |
-        This release contains KernelSU Next and SUSFS v2.0.0
+        This release contains WKSU, SUSFS & BBG
         
         ⚠️ **COMPATIBILITY NOTICE** ⚠️
         Please ensure compatibility!
