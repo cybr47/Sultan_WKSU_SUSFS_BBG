@@ -22,4 +22,4 @@ By flashing this kernel, **YOU** are choosing to make these modifications. If so
 - **SUSFS Module**: Developed by [sidex15](https://github.com/sidex15).
 - **Sultan Kernels**: Developed by [kerneltoast](https://github.com/kerneltoast).
 - **Wild Kernel SU**: Developed by [TheWildJames](https://github.com/TheWildJames).
-- **BasebandGuard**: Developed by [vc-teahouse]( [https://github.com/vc-teahouse).
+- **BasebandGuard**: Developed by [vc-teahouse](https://github.com/vc-teahouse).
